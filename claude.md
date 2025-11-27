@@ -1,5 +1,9 @@
 # Claude Code Guidelines
 
+## Python Environment
+- Use Python interpreter: `/opt/homebrew/bin/python3.14`
+- This is the system Python installed via Homebrew
+
 ## Git Workflow
 - **Push commits after each code change** with brief, descriptive commit messages
 - Follow conventional commit format when appropriate (e.g., `feat:`, `fix:`, `refactor:`)
