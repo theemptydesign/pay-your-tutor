@@ -170,11 +170,26 @@ export default function VisitTracker() {
                       }}
                     >
                       <option value="">-- Select a tutor --</option>
-                      {tutors.map((tutor) => (
-                        <option key={tutor.id} value={tutor.id}>
-                          {tutor.name}
-                        </option>
-                      ))}
+                      {tutors.map((tutor) => {
+                        // Show Miss Ford twice in the dropdown
+                        if (tutor.name === "Miss Ford") {
+                          return (
+                            <>
+                              <option key={`${tutor.id}-wyatt`} value={tutor.id}>
+                                Miss Ford - Wyatt
+                              </option>
+                              <option key={`${tutor.id}-gabriel`} value={tutor.id}>
+                                Miss Ford - Gabriel
+                              </option>
+                            </>
+                          )
+                        }
+                        return (
+                          <option key={tutor.id} value={tutor.id}>
+                            {tutor.name}
+                          </option>
+                        )
+                      })}
                     </select>
                   </div>
 
