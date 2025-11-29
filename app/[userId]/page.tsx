@@ -359,9 +359,9 @@ export default function VisitTracker() {
                   <th className="px-4 py-3 text-left text-sm font-medium text-on-surface-variant">Name</th>
                   <th className="px-4 py-3 text-center text-sm font-medium text-on-surface-variant">Visits</th>
                   <th className="px-4 py-3 text-center text-sm font-medium text-on-surface-variant">Cost</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-on-surface-variant">Current Month</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-on-surface-variant">Previous Month</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-on-surface-variant">YTD Total</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-on-surface-variant">Previous Month</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-on-surface-variant">Current Month</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant">
@@ -377,14 +377,14 @@ export default function VisitTracker() {
                       <td className="px-4 py-4 text-center text-sm text-on-surface-variant">
                         ${parseFloat(tutor.defaultCost).toFixed(2)}
                       </td>
-                      <td className="px-4 py-4 text-right text-sm font-medium text-foreground">
-                        ${current.total.toFixed(2)}
+                      <td className="px-4 py-4 text-right text-sm font-medium text-primary">
+                        ${ytd.total.toFixed(2)}
                       </td>
                       <td className="px-4 py-4 text-right text-sm font-medium text-on-surface-variant">
                         ${previous.total.toFixed(2)}
                       </td>
-                      <td className="px-4 py-4 text-right text-sm font-medium text-primary">
-                        ${ytd.total.toFixed(2)}
+                      <td className="px-4 py-4 text-right text-sm font-medium text-foreground">
+                        ${current.total.toFixed(2)}
                       </td>
                     </tr>
                   )
@@ -395,13 +395,13 @@ export default function VisitTracker() {
                   <td colSpan={3} className="px-4 py-4 text-sm font-medium text-foreground">
                     Grand Total
                   </td>
-                  <td className="px-4 py-4 text-right text-lg font-semibold text-foreground">
-                    ${currentMonthTotal.toFixed(2)}
-                  </td>
+                  <td className="px-4 py-4 text-right text-lg font-semibold text-primary">${ytdTotal.toFixed(2)}</td>
                   <td className="px-4 py-4 text-right text-lg font-semibold text-on-surface-variant">
                     ${previousMonthTotal.toFixed(2)}
                   </td>
-                  <td className="px-4 py-4 text-right text-lg font-semibold text-primary">${ytdTotal.toFixed(2)}</td>
+                  <td className="px-4 py-4 text-right text-lg font-semibold text-foreground">
+                    ${currentMonthTotal.toFixed(2)}
+                  </td>
                 </tr>
               </tfoot>
             </table>
