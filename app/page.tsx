@@ -1,75 +1,105 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
-type VisitData = {
-  neill: { count: number; total: number }
-  will: { count: number; total: number }
-  missFord: { count: number; total: number }
+type Tutor = {
+  id: number
+  name: string
+  defaultCost: string
+  isActive: boolean
 }
 
-const COSTS = {
-  neill: 90,
-  will: 68,
-  missFord: 75,
-}
-
-const TUTOR_NAMES = {
-  neill: "Neill",
-  will: "Will",
-  missFord: "Miss Ford",
-}
+type VisitSummary = Record<string, { count: number; total: number }>
 
 export default function VisitTracker() {
-  const [monthlyVisits, setMonthlyVisits] = useState<VisitData | null>(null)
-  const [ytdVisits, setYtdVisits] = useState<VisitData | null>(null)
+  const [tutors, setTutors] = useState<Tutor[]>([])
+  const [monthlyVisits, setMonthlyVisits] = useState<VisitSummary>({})
+  const [ytdVisits, setYtdVisits] = useState<VisitSummary>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [editingTutor, setEditingTutor] = useState<Tutor | null>(null)
+  const [editName, setEditName] = useState("")
+  const [editCost, setEditCost] = useState("")
+  const [isEditOpen, setIsEditOpen] = useState(false)
+
+  const fetchTutors = async () => {
+    try {
+      const response = await fetch("/api/tutors")
+      if (!response.ok) throw new Error("Failed to fetch tutors")
+      const data = await response.json()
+      setTutors(data.tutors)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred")
+    }
+  }
 
   const fetchSummary = async () => {
     try {
       const response = await fetch("/api/visits/summary")
       if (!response.ok) throw new Error("Failed to fetch summary")
-
       const data = await response.json()
-
-      // Transform API response to match our VisitData type
-      const transformData = (apiData: Record<string, { count: number; total: number }>) => ({
-        neill: apiData[TUTOR_NAMES.neill] || { count: 0, total: 0 },
-        will: apiData[TUTOR_NAMES.will] || { count: 0, total: 0 },
-        missFord: apiData[TUTOR_NAMES.missFord] || { count: 0, total: 0 },
-      })
-
-      setMonthlyVisits(transformData(data.monthly))
-      setYtdVisits(transformData(data.ytd))
-      setLoading(false)
+      setMonthlyVisits(data.monthly)
+      setYtdVisits(data.ytd)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
-      setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchSummary()
+    Promise.all([fetchTutors(), fetchSummary()]).finally(() => setLoading(false))
   }, [])
 
-  const addVisit = async (tutorKey: keyof typeof TUTOR_NAMES) => {
+  const addVisit = async (tutorName: string, cost: string) => {
     try {
       const response = await fetch("/api/visits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tutorName: TUTOR_NAMES[tutorKey],
-          cost: COSTS[tutorKey],
+          tutorName,
+          cost: parseFloat(cost),
         }),
       })
 
       if (!response.ok) throw new Error("Failed to add visit")
-
-      // Refresh the summary
       await fetchSummary()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add visit")
+    }
+  }
+
+  const openEditDialog = (tutor: Tutor) => {
+    setEditingTutor(tutor)
+    setEditName(tutor.name)
+    setEditCost(tutor.defaultCost)
+    setIsEditOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingTutor) return
+
+    try {
+      const response = await fetch("/api/tutors", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingTutor.id,
+          name: editName,
+          defaultCost: parseFloat(editCost),
+        }),
+      })
+
+      if (!response.ok) throw new Error("Failed to update tutor")
+
+      await fetchTutors()
+      await fetchSummary()
+      setIsEditOpen(false)
+      setEditingTutor(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update tutor")
     }
   }
 
@@ -97,13 +127,8 @@ export default function VisitTracker() {
     )
   }
 
-  if (!monthlyVisits || !ytdVisits) {
-    return null
-  }
-
-  const monthlyTotal =
-    monthlyVisits.neill.total + monthlyVisits.will.total + monthlyVisits.missFord.total
-  const ytdTotal = ytdVisits.neill.total + ytdVisits.will.total + ytdVisits.missFord.total
+  const monthlyTotal = Object.values(monthlyVisits).reduce((sum, v) => sum + v.total, 0)
+  const ytdTotal = Object.values(ytdVisits).reduce((sum, v) => sum + v.total, 0)
 
   const monthName = new Date().toLocaleString("default", { month: "long", year: "numeric" })
 
@@ -120,37 +145,87 @@ export default function VisitTracker() {
         <div className="mb-6 rounded-3xl bg-surface-container p-6 shadow-sm">
           <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-on-surface-variant">Add Visit</h2>
           <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => addVisit("neill")}
-              className="m3-button rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-md transition-shadow hover:shadow-lg"
-            >
-              Neill
-            </button>
-            <button
-              onClick={() => addVisit("will")}
-              className="m3-button rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-md transition-shadow hover:shadow-lg"
-            >
-              Will
-            </button>
-            <button
-              onClick={() => addVisit("missFord")}
-              className="m3-button rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground shadow-md transition-shadow hover:shadow-lg"
-            >
-              Miss Ford - Wyatt
-            </button>
-            <button
-              onClick={() => addVisit("missFord")}
-              className="m3-button rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground shadow-md transition-shadow hover:shadow-lg"
-            >
-              Miss Ford - Gabriel
-            </button>
+            {tutors.map((tutor) => (
+              <button
+                key={tutor.id}
+                onClick={() => addVisit(tutor.name, tutor.defaultCost)}
+                className="m3-button rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-md transition-shadow hover:shadow-lg"
+              >
+                {tutor.name}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Table Card */}
         <div className="rounded-3xl bg-surface-container-high shadow-sm">
-          <div className="p-6 pb-4">
+          <div className="p-6 pb-4 flex justify-between items-center">
             <h2 className="text-sm font-medium uppercase tracking-wide text-on-surface-variant">Visit Summary</h2>
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">Edit Tutors</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit Tutor</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="tutor-select">Select Tutor</Label>
+                    <select
+                      id="tutor-select"
+                      className="w-full mt-2 rounded-md border border-input bg-background px-3 py-2"
+                      value={editingTutor?.id || ""}
+                      onChange={(e) => {
+                        const tutor = tutors.find((t) => t.id === parseInt(e.target.value))
+                        if (tutor) {
+                          setEditingTutor(tutor)
+                          setEditName(tutor.name)
+                          setEditCost(tutor.defaultCost)
+                        }
+                      }}
+                    >
+                      <option value="">-- Select a tutor --</option>
+                      {tutors.map((tutor) => (
+                        <option key={tutor.id} value={tutor.id}>
+                          {tutor.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {editingTutor && (
+                    <>
+                      <div>
+                        <Label htmlFor="tutor-name">Name</Label>
+                        <Input
+                          id="tutor-name"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="mt-2"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="tutor-cost">Default Cost ($)</Label>
+                        <Input
+                          id="tutor-cost"
+                          type="number"
+                          step="0.01"
+                          value={editCost}
+                          onChange={(e) => setEditCost(e.target.value)}
+                          className="mt-2"
+                        />
+                      </div>
+
+                      <Button onClick={handleSaveEdit} className="w-full">
+                        Save Changes
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
           <div className="overflow-hidden overflow-x-auto">
             <table className="w-full">
@@ -164,46 +239,35 @@ export default function VisitTracker() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant">
-                <tr className="hover:bg-background/50 transition-colors">
-                  <td className="px-4 py-4 text-sm font-medium text-foreground">Neill</td>
-                  <td className="px-4 py-4 text-center text-sm text-foreground">{monthlyVisits.neill.count}</td>
-                  <td className="px-4 py-4 text-center text-sm text-on-surface-variant">${COSTS.neill}</td>
-                  <td className="px-4 py-4 text-right text-sm font-medium text-foreground">
-                    ${monthlyVisits.neill.total.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-4 text-right text-sm font-medium text-primary">
-                    ${ytdVisits.neill.total.toFixed(2)}
-                  </td>
-                </tr>
-                <tr className="hover:bg-background/50 transition-colors">
-                  <td className="px-4 py-4 text-sm font-medium text-foreground">Will</td>
-                  <td className="px-4 py-4 text-center text-sm text-foreground">{monthlyVisits.will.count}</td>
-                  <td className="px-4 py-4 text-center text-sm text-on-surface-variant">${COSTS.will}</td>
-                  <td className="px-4 py-4 text-right text-sm font-medium text-foreground">
-                    ${monthlyVisits.will.total.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-4 text-right text-sm font-medium text-primary">
-                    ${ytdVisits.will.total.toFixed(2)}
-                  </td>
-                </tr>
-                <tr className="hover:bg-background/50 transition-colors">
-                  <td className="px-4 py-4 text-sm font-medium text-foreground">Miss Ford</td>
-                  <td className="px-4 py-4 text-center text-sm text-foreground">{monthlyVisits.missFord.count}</td>
-                  <td className="px-4 py-4 text-center text-sm text-on-surface-variant">${COSTS.missFord}</td>
-                  <td className="px-4 py-4 text-right text-sm font-medium text-foreground">
-                    ${monthlyVisits.missFord.total.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-4 text-right text-sm font-medium text-primary">
-                    ${ytdVisits.missFord.total.toFixed(2)}
-                  </td>
-                </tr>
+                {tutors.map((tutor) => {
+                  const monthly = monthlyVisits[tutor.name] || { count: 0, total: 0 }
+                  const ytd = ytdVisits[tutor.name] || { count: 0, total: 0 }
+
+                  return (
+                    <tr key={tutor.id} className="hover:bg-background/50 transition-colors">
+                      <td className="px-4 py-4 text-sm font-medium text-foreground">{tutor.name}</td>
+                      <td className="px-4 py-4 text-center text-sm text-foreground">{monthly.count}</td>
+                      <td className="px-4 py-4 text-center text-sm text-on-surface-variant">
+                        ${parseFloat(tutor.defaultCost).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-4 text-right text-sm font-medium text-foreground">
+                        ${monthly.total.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-4 text-right text-sm font-medium text-primary">
+                        ${ytd.total.toFixed(2)}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-outline bg-secondary/30">
                   <td colSpan={3} className="px-4 py-4 text-sm font-medium text-foreground">
                     Grand Total
                   </td>
-                  <td className="px-4 py-4 text-right text-lg font-semibold text-foreground">${monthlyTotal.toFixed(2)}</td>
+                  <td className="px-4 py-4 text-right text-lg font-semibold text-foreground">
+                    ${monthlyTotal.toFixed(2)}
+                  </td>
                   <td className="px-4 py-4 text-right text-lg font-semibold text-primary">${ytdTotal.toFixed(2)}</td>
                 </tr>
               </tfoot>
