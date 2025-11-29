@@ -305,30 +305,28 @@ export default function VisitTracker() {
             </Dialog>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {tutors.map((tutor) => {
+            {tutors.flatMap((tutor) => {
               // Handle Miss Ford separately - show two buttons
               if (tutor.name === "Miss Ford") {
-                return (
-                  <>
-                    <button
-                      key={`${tutor.id}-wyatt`}
-                      onClick={() => addVisit(tutor.name, tutor.defaultCost)}
-                      className="m3-button rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground shadow-md transition-shadow hover:shadow-lg"
-                    >
-                      Miss Ford - Wyatt
-                    </button>
-                    <button
-                      key={`${tutor.id}-gabriel`}
-                      onClick={() => addVisit(tutor.name, tutor.defaultCost)}
-                      className="m3-button rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground shadow-md transition-shadow hover:shadow-lg"
-                    >
-                      Miss Ford - Gabriel
-                    </button>
-                  </>
-                )
+                return [
+                  <button
+                    key={`${tutor.id}-wyatt`}
+                    onClick={() => addVisit(tutor.name, tutor.defaultCost)}
+                    className="m3-button rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground shadow-md transition-shadow hover:shadow-lg"
+                  >
+                    Miss Ford - Wyatt
+                  </button>,
+                  <button
+                    key={`${tutor.id}-gabriel`}
+                    onClick={() => addVisit(tutor.name, tutor.defaultCost)}
+                    className="m3-button rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground shadow-md transition-shadow hover:shadow-lg"
+                  >
+                    Miss Ford - Gabriel
+                  </button>
+                ]
               }
 
-              return (
+              return [
                 <button
                   key={tutor.id}
                   onClick={() => addVisit(tutor.name, tutor.defaultCost)}
@@ -336,7 +334,7 @@ export default function VisitTracker() {
                 >
                   {tutor.name}
                 </button>
-              )
+              ]
             })}
           </div>
         </div>
