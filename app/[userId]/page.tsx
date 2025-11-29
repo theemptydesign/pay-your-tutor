@@ -23,6 +23,8 @@ export default function VisitTracker() {
   const [currentMonthVisits, setCurrentMonthVisits] = useState<VisitSummary>({})
   const [previousMonthVisits, setPreviousMonthVisits] = useState<VisitSummary>({})
   const [ytdVisits, setYtdVisits] = useState<VisitSummary>({})
+  const [paidTutors, setPaidTutors] = useState<Record<string, boolean>>({})
+  const [previousMonthString, setPreviousMonthString] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editingTutor, setEditingTutor] = useState<Tutor | null>(null)
@@ -50,6 +52,8 @@ export default function VisitTracker() {
       setCurrentMonthVisits(data.currentMonth)
       setPreviousMonthVisits(data.previousMonth)
       setYtdVisits(data.ytd)
+      setPaidTutors(data.paidTutors || {})
+      setPreviousMonthString(data.previousMonthString || "")
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
     }
@@ -162,6 +166,30 @@ export default function VisitTracker() {
       setEditCost("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete tutor")
+    }
+  }
+
+  const markAsPaid = async (tutorName: string, amount: number) => {
+    try {
+      const response = await fetch("/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          tutorName,
+          amount,
+          paymentMonth: previousMonthString,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to mark as paid")
+      }
+
+      await fetchSummary()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to mark as paid")
     }
   }
 
@@ -370,6 +398,9 @@ export default function VisitTracker() {
                   const previous = previousMonthVisits[tutor.name] || { count: 0, total: 0 }
                   const ytd = ytdVisits[tutor.name] || { count: 0, total: 0 }
 
+                  const isPaid = paidTutors[tutor.name] || false
+                  const hasPreviousAmount = previous.total > 0
+
                   return (
                     <tr key={tutor.id} className="hover:bg-background/50 transition-colors">
                       <td className="px-4 py-4 text-sm font-medium text-foreground">{tutor.name}</td>
@@ -380,8 +411,24 @@ export default function VisitTracker() {
                       <td className="px-4 py-4 text-right text-sm font-medium text-primary">
                         ${ytd.total.toFixed(2)}
                       </td>
-                      <td className="px-4 py-4 text-right text-sm font-medium text-on-surface-variant">
-                        ${previous.total.toFixed(2)}
+                      <td className="px-4 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className={`text-sm font-medium ${isPaid ? "text-green-600 dark:text-green-400" : "text-on-surface-variant"}`}>
+                            ${previous.total.toFixed(2)}
+                          </span>
+                          {hasPreviousAmount && !isPaid && (
+                            <button
+                              onClick={() => markAsPaid(tutor.name, previous.total)}
+                              className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+                              title="Mark as paid"
+                            >
+                              Mark Paid
+                            </button>
+                          )}
+                          {isPaid && (
+                            <span className="text-xs text-green-600 dark:text-green-400">✓ Paid</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-4 text-right text-sm font-medium text-foreground">
                         ${current.total.toFixed(2)}

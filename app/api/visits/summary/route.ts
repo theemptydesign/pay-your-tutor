@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { visits } from "@/lib/db/schema"
+import { visits, payments } from "@/lib/db/schema"
 import { sql, and, gte, lte, eq } from "drizzle-orm"
 
 export async function GET(request: NextRequest) {
@@ -91,12 +91,26 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Get payment status for previous month
+    const prevMonthString = `${currentYear}-${String(currentMonth).padStart(2, "0")}`
+    const paymentRecords = await db
+      .select()
+      .from(payments)
+      .where(and(eq(payments.userId, userId), eq(payments.paymentMonth, prevMonthString)))
+
+    const paidTutors: Record<string, boolean> = {}
+    paymentRecords.forEach((payment) => {
+      paidTutors[payment.tutorName] = true
+    })
+
     return NextResponse.json({
       currentMonth: currentMonthVisits,
       previousMonth: previousMonthVisits,
       ytd: ytdVisits,
+      paidTutors,
       currentMonthNumber: currentMonth,
       currentYear,
+      previousMonthString: prevMonthString,
     })
   } catch (error) {
     console.error("Error fetching summary:", error)
