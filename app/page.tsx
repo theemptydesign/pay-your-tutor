@@ -143,24 +143,8 @@ export default function VisitTracker() {
 
         {/* Buttons Card */}
         <div className="mb-6 rounded-3xl bg-surface-container p-6 shadow-sm">
-          <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-on-surface-variant">Add Visit</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {tutors.map((tutor) => (
-              <button
-                key={tutor.id}
-                onClick={() => addVisit(tutor.name, tutor.defaultCost)}
-                className="m3-button rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-md transition-shadow hover:shadow-lg"
-              >
-                {tutor.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Table Card */}
-        <div className="rounded-3xl bg-surface-container-high shadow-sm">
-          <div className="p-6 pb-4 flex justify-between items-center">
-            <h2 className="text-sm font-medium uppercase tracking-wide text-on-surface-variant">Visit Summary</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-on-surface-variant">Add Visit</h2>
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">Edit Tutors</Button>
@@ -226,6 +210,48 @@ export default function VisitTracker() {
                 </div>
               </DialogContent>
             </Dialog>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {tutors.map((tutor) => {
+              // Handle Miss Ford separately - show two buttons
+              if (tutor.name === "Miss Ford") {
+                return (
+                  <>
+                    <button
+                      key={`${tutor.id}-wyatt`}
+                      onClick={() => addVisit(tutor.name, tutor.defaultCost)}
+                      className="m3-button rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground shadow-md transition-shadow hover:shadow-lg"
+                    >
+                      Miss Ford - Wyatt
+                    </button>
+                    <button
+                      key={`${tutor.id}-gabriel`}
+                      onClick={() => addVisit(tutor.name, tutor.defaultCost)}
+                      className="m3-button rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground shadow-md transition-shadow hover:shadow-lg"
+                    >
+                      Miss Ford - Gabriel
+                    </button>
+                  </>
+                )
+              }
+
+              return (
+                <button
+                  key={tutor.id}
+                  onClick={() => addVisit(tutor.name, tutor.defaultCost)}
+                  className="m3-button rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-md transition-shadow hover:shadow-lg"
+                >
+                  {tutor.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Table Card */}
+        <div className="rounded-3xl bg-surface-container-high shadow-sm">
+          <div className="p-6 pb-4">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-on-surface-variant">Visit Summary</h2>
           </div>
           <div className="overflow-hidden overflow-x-auto">
             <table className="w-full">
