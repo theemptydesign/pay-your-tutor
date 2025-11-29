@@ -25,6 +25,7 @@ export const payments = pgTable("payments", {
   tutorName: varchar("tutor_name", { length: 50 }).notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   paymentMonth: varchar("payment_month", { length: 7 }).notNull(), // Format: "2025-01"
+  paymentDate: timestamp("payment_date").notNull(), // When the checkbox was clicked
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 

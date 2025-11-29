@@ -103,14 +103,28 @@ export async function GET(request: NextRequest) {
       paidTutors[payment.tutorName] = true
     })
 
+    // Get payment status for current month
+    const currentMonthString = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`
+    const currentMonthPaymentRecords = await db
+      .select()
+      .from(payments)
+      .where(and(eq(payments.userId, userId), eq(payments.paymentMonth, currentMonthString)))
+
+    const currentMonthPaidTutors: Record<string, string> = {}
+    currentMonthPaymentRecords.forEach((payment) => {
+      currentMonthPaidTutors[payment.tutorName] = payment.paymentDate.toISOString()
+    })
+
     return NextResponse.json({
       currentMonth: currentMonthVisits,
       previousMonth: previousMonthVisits,
       ytd: ytdVisits,
       paidTutors,
+      currentMonthPaidTutors,
       currentMonthNumber: currentMonth,
       currentYear,
       previousMonthString: prevMonthString,
+      currentMonthString,
     })
   } catch (error) {
     console.error("Error fetching summary:", error)

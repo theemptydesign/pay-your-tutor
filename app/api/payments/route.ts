@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, tutorName, amount, paymentMonth } = body
+    const { userId, tutorName, amount, paymentMonth, paymentDate } = body
 
     if (!userId || !tutorName || !amount || !paymentMonth) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -25,7 +25,17 @@ export async function POST(request: NextRequest) {
       )
 
     if (existingPayment.length > 0) {
-      return NextResponse.json({ error: "Payment already recorded for this month" }, { status: 400 })
+      // Delete existing payment to allow re-checking
+      await db
+        .delete(payments)
+        .where(
+          and(
+            eq(payments.userId, userId),
+            eq(payments.tutorName, tutorName),
+            eq(payments.paymentMonth, paymentMonth)
+          )
+        )
+      return NextResponse.json({ payment: null, deleted: true }, { status: 200 })
     }
 
     const [newPayment] = await db
@@ -35,6 +45,7 @@ export async function POST(request: NextRequest) {
         tutorName,
         amount: amount.toString(),
         paymentMonth,
+        paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
       })
       .returning()
 

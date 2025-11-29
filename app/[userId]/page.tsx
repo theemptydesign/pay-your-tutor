@@ -24,7 +24,9 @@ export default function VisitTracker() {
   const [previousMonthVisits, setPreviousMonthVisits] = useState<VisitSummary>({})
   const [ytdVisits, setYtdVisits] = useState<VisitSummary>({})
   const [paidTutors, setPaidTutors] = useState<Record<string, boolean>>({})
+  const [currentMonthPaidTutors, setCurrentMonthPaidTutors] = useState<Record<string, string>>({})
   const [previousMonthString, setPreviousMonthString] = useState("")
+  const [currentMonthString, setCurrentMonthString] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editingTutor, setEditingTutor] = useState<Tutor | null>(null)
@@ -53,7 +55,9 @@ export default function VisitTracker() {
       setPreviousMonthVisits(data.previousMonth)
       setYtdVisits(data.ytd)
       setPaidTutors(data.paidTutors || {})
+      setCurrentMonthPaidTutors(data.currentMonthPaidTutors || {})
       setPreviousMonthString(data.previousMonthString || "")
+      setCurrentMonthString(data.currentMonthString || "")
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
     }
@@ -179,6 +183,7 @@ export default function VisitTracker() {
           tutorName,
           amount,
           paymentMonth: previousMonthString,
+          paymentDate: new Date().toISOString(),
         }),
       })
 
@@ -190,6 +195,31 @@ export default function VisitTracker() {
       await fetchSummary()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to mark as paid")
+    }
+  }
+
+  const toggleCurrentMonthPaid = async (tutorName: string, amount: number) => {
+    try {
+      const response = await fetch("/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          tutorName,
+          amount,
+          paymentMonth: currentMonthString,
+          paymentDate: new Date().toISOString(),
+        }),
+      })
+
+      if (!response.ok && response.status !== 200) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to toggle payment status")
+      }
+
+      await fetchSummary()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to toggle payment status")
     }
   }
 
@@ -400,6 +430,9 @@ export default function VisitTracker() {
 
                   const isPaid = paidTutors[tutor.name] || false
                   const hasPreviousAmount = previous.total > 0
+                  const isCurrentMonthPaid = !!currentMonthPaidTutors[tutor.name]
+                  const currentMonthPaymentDate = currentMonthPaidTutors[tutor.name]
+                  const hasCurrentAmount = current.total > 0
 
                   return (
                     <tr key={tutor.id} className="hover:bg-background/50 transition-colors">
@@ -430,8 +463,22 @@ export default function VisitTracker() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-right text-sm font-medium text-foreground">
-                        ${current.total.toFixed(2)}
+                      <td className="px-4 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-sm font-medium text-foreground">
+                            ${current.total.toFixed(2)}
+                          </span>
+                          {hasCurrentAmount && (
+                            <label className="flex items-center cursor-pointer group" title={isCurrentMonthPaid ? `Paid on ${new Date(currentMonthPaymentDate).toLocaleDateString()}` : "Mark as paid"}>
+                              <input
+                                type="checkbox"
+                                checked={isCurrentMonthPaid}
+                                onChange={() => toggleCurrentMonthPaid(tutor.name, current.total)}
+                                className="w-4 h-4 rounded border-2 border-primary text-primary focus:ring-2 focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                              />
+                            </label>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
