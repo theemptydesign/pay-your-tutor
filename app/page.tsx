@@ -127,6 +127,35 @@ export default function VisitTracker() {
     }
   }
 
+  const handleDeleteTutor = async () => {
+    if (!editingTutor) return
+
+    if (!confirm(`Are you sure you want to delete ${editingTutor.name}? This will also delete all visit records for this tutor.`)) {
+      return
+    }
+
+    try {
+      const response = await fetch("/api/tutors", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingTutor.id,
+        }),
+      })
+
+      if (!response.ok) throw new Error("Failed to delete tutor")
+
+      await fetchTutors()
+      await fetchSummary()
+      setIsEditOpen(false)
+      setEditingTutor(null)
+      setEditName("")
+      setEditCost("")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete tutor")
+    }
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-background p-6 flex items-center justify-center">
@@ -252,9 +281,16 @@ export default function VisitTracker() {
                         />
                       </div>
 
-                      <Button onClick={handleSaveEdit} className="w-full">
-                        {isAddingNew ? "Add Tutor" : "Save Changes"}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button onClick={handleSaveEdit} className="flex-1">
+                          {isAddingNew ? "Add Tutor" : "Save Changes"}
+                        </Button>
+                        {!isAddingNew && editingTutor && (
+                          <Button onClick={handleDeleteTutor} variant="destructive">
+                            Delete
+                          </Button>
+                        )}
+                      </div>
                     </>
                   )}
                 </div>

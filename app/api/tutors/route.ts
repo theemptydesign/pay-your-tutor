@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { tutors } from "@/lib/db/schema"
+import { tutors, visits } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
 
 export async function GET() {
@@ -60,5 +60,37 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error creating tutor:", error)
     return NextResponse.json({ error: "Failed to create tutor" }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { id } = body
+
+    if (!id) {
+      return NextResponse.json({ error: "Missing tutor id" }, { status: 400 })
+    }
+
+    // Get the tutor name first
+    const [tutor] = await db.select().from(tutors).where(eq(tutors.id, id))
+
+    if (!tutor) {
+      return NextResponse.json({ error: "Tutor not found" }, { status: 404 })
+    }
+
+    // Delete all visits for this tutor
+    await db.delete(visits).where(eq(visits.tutorName, tutor.name))
+
+    // Soft delete the tutor by setting isActive to false
+    await db
+      .update(tutors)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(tutors.id, id))
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Error deleting tutor:", error)
+    return NextResponse.json({ error: "Failed to delete tutor" }, { status: 500 })
   }
 }
