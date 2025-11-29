@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { tutors, visits } from "@/lib/db/schema"
-import { eq } from "drizzle-orm"
+import { eq, and } from "drizzle-orm"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const allTutors = await db.select().from(tutors).where(eq(tutors.isActive, true))
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get("userId")
+
+    if (!userId) {
+      return NextResponse.json({ error: "userId is required" }, { status: 400 })
+    }
+
+    const allTutors = await db
+      .select()
+      .from(tutors)
+      .where(and(eq(tutors.userId, userId), eq(tutors.isActive, true)))
     return NextResponse.json({ tutors: allTutors })
   } catch (error) {
     console.error("Error fetching tutors:", error)
@@ -16,9 +26,9 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, name, defaultCost } = body
+    const { userId, id, name, defaultCost } = body
 
-    if (!id || !name || !defaultCost) {
+    if (!userId || !id || !name || !defaultCost) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
@@ -29,7 +39,7 @@ export async function PUT(request: NextRequest) {
         defaultCost: defaultCost.toString(),
         updatedAt: new Date(),
       })
-      .where(eq(tutors.id, id))
+      .where(and(eq(tutors.id, id), eq(tutors.userId, userId)))
       .returning()
 
     return NextResponse.json({ tutor: updatedTutor })
@@ -42,15 +52,16 @@ export async function PUT(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, defaultCost } = body
+    const { userId, name, defaultCost } = body
 
-    if (!name || !defaultCost) {
+    if (!userId || !name || !defaultCost) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
     const [newTutor] = await db
       .insert(tutors)
       .values({
+        userId,
         name,
         defaultCost: defaultCost.toString(),
       })
@@ -66,27 +77,27 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id } = body
+    const { userId, id } = body
 
-    if (!id) {
-      return NextResponse.json({ error: "Missing tutor id" }, { status: 400 })
+    if (!userId || !id) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
     // Get the tutor name first
-    const [tutor] = await db.select().from(tutors).where(eq(tutors.id, id))
+    const [tutor] = await db.select().from(tutors).where(and(eq(tutors.id, id), eq(tutors.userId, userId)))
 
     if (!tutor) {
       return NextResponse.json({ error: "Tutor not found" }, { status: 404 })
     }
 
-    // Delete all visits for this tutor
-    await db.delete(visits).where(eq(visits.tutorName, tutor.name))
+    // Delete all visits for this tutor and user
+    await db.delete(visits).where(and(eq(visits.tutorName, tutor.name), eq(visits.userId, userId)))
 
     // Soft delete the tutor by setting isActive to false
     await db
       .update(tutors)
       .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(tutors.id, id))
+      .where(and(eq(tutors.id, id), eq(tutors.userId, userId)))
 
     return NextResponse.json({ success: true })
   } catch (error) {

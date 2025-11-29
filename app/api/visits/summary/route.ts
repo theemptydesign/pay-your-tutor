@@ -1,10 +1,17 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { visits } from "@/lib/db/schema"
-import { sql, and, gte } from "drizzle-orm"
+import { sql, and, gte, eq } from "drizzle-orm"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get("userId")
+
+    if (!userId) {
+      return NextResponse.json({ error: "userId is required" }, { status: 400 })
+    }
+
     const now = new Date()
     const currentYear = now.getFullYear()
     const currentMonth = now.getMonth()
@@ -23,7 +30,7 @@ export async function GET() {
         total: sql<number>`sum(${visits.cost})::numeric`,
       })
       .from(visits)
-      .where(gte(visits.visitDate, monthStart))
+      .where(and(eq(visits.userId, userId), gte(visits.visitDate, monthStart)))
       .groupBy(visits.tutorName)
 
     // Get YTD visits grouped by tutor
@@ -34,7 +41,7 @@ export async function GET() {
         total: sql<number>`sum(${visits.cost})::numeric`,
       })
       .from(visits)
-      .where(gte(visits.visitDate, yearStart))
+      .where(and(eq(visits.userId, userId), gte(visits.visitDate, yearStart)))
       .groupBy(visits.tutorName)
 
     // Format results
