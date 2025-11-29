@@ -25,6 +25,7 @@ export default function VisitTracker() {
   const [editName, setEditName] = useState("")
   const [editCost, setEditCost] = useState("")
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isAddingNew, setIsAddingNew] = useState(false)
 
   const fetchTutors = async () => {
     try {
@@ -79,27 +80,50 @@ export default function VisitTracker() {
   }
 
   const handleSaveEdit = async () => {
-    if (!editingTutor) return
+    if (!editName || !editCost) {
+      setError("Name and cost are required")
+      return
+    }
 
     try {
-      const response = await fetch("/api/tutors", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editingTutor.id,
-          name: editName,
-          defaultCost: parseFloat(editCost),
-        }),
-      })
+      if (isAddingNew) {
+        // Create new tutor
+        const response = await fetch("/api/tutors", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: editName,
+            defaultCost: parseFloat(editCost),
+          }),
+        })
 
-      if (!response.ok) throw new Error("Failed to update tutor")
+        if (!response.ok) throw new Error("Failed to create tutor")
+      } else {
+        // Update existing tutor
+        if (!editingTutor) return
+
+        const response = await fetch("/api/tutors", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingTutor.id,
+            name: editName,
+            defaultCost: parseFloat(editCost),
+          }),
+        })
+
+        if (!response.ok) throw new Error("Failed to update tutor")
+      }
 
       await fetchTutors()
       await fetchSummary()
       setIsEditOpen(false)
       setEditingTutor(null)
+      setIsAddingNew(false)
+      setEditName("")
+      setEditCost("")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update tutor")
+      setError(err instanceof Error ? err.message : "Failed to save tutor")
     }
   }
 
@@ -159,17 +183,26 @@ export default function VisitTracker() {
                     <select
                       id="tutor-select"
                       className="w-full mt-2 rounded-md border border-input bg-background px-3 py-2"
-                      value={editingTutor?.id || ""}
+                      value={isAddingNew ? "new" : (editingTutor?.id || "")}
                       onChange={(e) => {
-                        const tutor = tutors.find((t) => t.id === parseInt(e.target.value))
-                        if (tutor) {
-                          setEditingTutor(tutor)
-                          setEditName(tutor.name)
-                          setEditCost(tutor.defaultCost)
+                        if (e.target.value === "new") {
+                          setIsAddingNew(true)
+                          setEditingTutor(null)
+                          setEditName("")
+                          setEditCost("")
+                        } else {
+                          const tutor = tutors.find((t) => t.id === parseInt(e.target.value))
+                          if (tutor) {
+                            setIsAddingNew(false)
+                            setEditingTutor(tutor)
+                            setEditName(tutor.name)
+                            setEditCost(tutor.defaultCost)
+                          }
                         }
                       }}
                     >
                       <option value="">-- Select a tutor --</option>
+                      <option value="new">+ Add New Tutor</option>
                       {tutors.map((tutor) => {
                         // Show Miss Ford twice in the dropdown
                         if (tutor.name === "Miss Ford") {
@@ -193,7 +226,7 @@ export default function VisitTracker() {
                     </select>
                   </div>
 
-                  {editingTutor && (
+                  {(editingTutor || isAddingNew) && (
                     <>
                       <div>
                         <Label htmlFor="tutor-name">Name</Label>
@@ -202,6 +235,7 @@ export default function VisitTracker() {
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
                           className="mt-2"
+                          placeholder="Enter tutor name"
                         />
                       </div>
 
@@ -214,11 +248,12 @@ export default function VisitTracker() {
                           value={editCost}
                           onChange={(e) => setEditCost(e.target.value)}
                           className="mt-2"
+                          placeholder="0.00"
                         />
                       </div>
 
                       <Button onClick={handleSaveEdit} className="w-full">
-                        Save Changes
+                        {isAddingNew ? "Add Tutor" : "Save Changes"}
                       </Button>
                     </>
                   )}
