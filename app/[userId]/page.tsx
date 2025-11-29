@@ -20,7 +20,8 @@ export default function VisitTracker() {
   const params = useParams()
   const userId = params.userId as string
   const [tutors, setTutors] = useState<Tutor[]>([])
-  const [monthlyVisits, setMonthlyVisits] = useState<VisitSummary>({})
+  const [currentMonthVisits, setCurrentMonthVisits] = useState<VisitSummary>({})
+  const [previousMonthVisits, setPreviousMonthVisits] = useState<VisitSummary>({})
   const [ytdVisits, setYtdVisits] = useState<VisitSummary>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +47,8 @@ export default function VisitTracker() {
       const response = await fetch(`/api/visits/summary?userId=${userId}`)
       if (!response.ok) throw new Error("Failed to fetch summary")
       const data = await response.json()
-      setMonthlyVisits(data.monthly)
+      setCurrentMonthVisits(data.currentMonth)
+      setPreviousMonthVisits(data.previousMonth)
       setYtdVisits(data.ytd)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
@@ -187,10 +189,16 @@ export default function VisitTracker() {
     )
   }
 
-  const monthlyTotal = Object.values(monthlyVisits).reduce((sum, v) => sum + v.total, 0)
+  const currentMonthTotal = Object.values(currentMonthVisits).reduce((sum, v) => sum + v.total, 0)
+  const previousMonthTotal = Object.values(previousMonthVisits).reduce((sum, v) => sum + v.total, 0)
   const ytdTotal = Object.values(ytdVisits).reduce((sum, v) => sum + v.total, 0)
 
-  const monthName = new Date().toLocaleString("default", { month: "long", year: "numeric" })
+  const now = new Date()
+  const currentMonthName = now.toLocaleString("default", { month: "long", year: "numeric" })
+  const previousMonthName = new Date(now.getFullYear(), now.getMonth() - 1).toLocaleString("default", {
+    month: "long",
+    year: "numeric"
+  })
 
   return (
     <main className="min-h-screen bg-background p-6">
@@ -198,7 +206,7 @@ export default function VisitTracker() {
         {/* Header */}
         <header className="mb-8 text-center">
           <h1 className="text-3xl font-medium tracking-tight text-foreground">Visit Tracker</h1>
-          <p className="mt-2 text-on-surface-variant">{monthName}</p>
+          <p className="mt-2 text-on-surface-variant">{currentMonthName}</p>
         </header>
 
         {/* Buttons Card */}
@@ -351,24 +359,29 @@ export default function VisitTracker() {
                   <th className="px-4 py-3 text-left text-sm font-medium text-on-surface-variant">Name</th>
                   <th className="px-4 py-3 text-center text-sm font-medium text-on-surface-variant">Visits</th>
                   <th className="px-4 py-3 text-center text-sm font-medium text-on-surface-variant">Cost</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-on-surface-variant">Monthly Total</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-on-surface-variant">Current Month</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-on-surface-variant">Previous Month</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-on-surface-variant">YTD Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant">
                 {tutors.map((tutor) => {
-                  const monthly = monthlyVisits[tutor.name] || { count: 0, total: 0 }
+                  const current = currentMonthVisits[tutor.name] || { count: 0, total: 0 }
+                  const previous = previousMonthVisits[tutor.name] || { count: 0, total: 0 }
                   const ytd = ytdVisits[tutor.name] || { count: 0, total: 0 }
 
                   return (
                     <tr key={tutor.id} className="hover:bg-background/50 transition-colors">
                       <td className="px-4 py-4 text-sm font-medium text-foreground">{tutor.name}</td>
-                      <td className="px-4 py-4 text-center text-sm text-foreground">{monthly.count}</td>
+                      <td className="px-4 py-4 text-center text-sm text-foreground">{current.count}</td>
                       <td className="px-4 py-4 text-center text-sm text-on-surface-variant">
                         ${parseFloat(tutor.defaultCost).toFixed(2)}
                       </td>
                       <td className="px-4 py-4 text-right text-sm font-medium text-foreground">
-                        ${monthly.total.toFixed(2)}
+                        ${current.total.toFixed(2)}
+                      </td>
+                      <td className="px-4 py-4 text-right text-sm font-medium text-on-surface-variant">
+                        ${previous.total.toFixed(2)}
                       </td>
                       <td className="px-4 py-4 text-right text-sm font-medium text-primary">
                         ${ytd.total.toFixed(2)}
@@ -383,7 +396,10 @@ export default function VisitTracker() {
                     Grand Total
                   </td>
                   <td className="px-4 py-4 text-right text-lg font-semibold text-foreground">
-                    ${monthlyTotal.toFixed(2)}
+                    ${currentMonthTotal.toFixed(2)}
+                  </td>
+                  <td className="px-4 py-4 text-right text-lg font-semibold text-on-surface-variant">
+                    ${previousMonthTotal.toFixed(2)}
                   </td>
                   <td className="px-4 py-4 text-right text-lg font-semibold text-primary">${ytdTotal.toFixed(2)}</td>
                 </tr>
@@ -393,7 +409,7 @@ export default function VisitTracker() {
         </div>
 
         <p className="mt-4 text-center text-xs text-on-surface-variant">
-          Monthly visits are calculated for the current month. YTD resets each January.
+          Current month shows visits for {currentMonthName.split(" ")[0]}. Previous month shows {previousMonthName.split(" ")[0]}. YTD resets each January.
         </p>
       </div>
     </main>

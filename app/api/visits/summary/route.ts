@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { visits } from "@/lib/db/schema"
-import { sql, and, gte, eq } from "drizzle-orm"
+import { sql, and, gte, lte, eq } from "drizzle-orm"
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,20 +17,41 @@ export async function GET(request: NextRequest) {
     const currentMonth = now.getMonth()
 
     // Start of current month
-    const monthStart = new Date(currentYear, currentMonth, 1)
+    const currentMonthStart = new Date(currentYear, currentMonth, 1)
+
+    // Start and end of previous month
+    const prevMonthStart = new Date(currentYear, currentMonth - 1, 1)
+    const prevMonthEnd = new Date(currentYear, currentMonth, 0, 23, 59, 59)
 
     // Start of current year
     const yearStart = new Date(currentYear, 0, 1)
 
-    // Get monthly visits grouped by tutor
-    const monthlyResults = await db
+    // Get current month visits grouped by tutor
+    const currentMonthResults = await db
       .select({
         tutorName: visits.tutorName,
         count: sql<number>`count(*)::int`,
         total: sql<number>`sum(${visits.cost})::numeric`,
       })
       .from(visits)
-      .where(and(eq(visits.userId, userId), gte(visits.visitDate, monthStart)))
+      .where(and(eq(visits.userId, userId), gte(visits.visitDate, currentMonthStart)))
+      .groupBy(visits.tutorName)
+
+    // Get previous month visits grouped by tutor
+    const previousMonthResults = await db
+      .select({
+        tutorName: visits.tutorName,
+        count: sql<number>`count(*)::int`,
+        total: sql<number>`sum(${visits.cost})::numeric`,
+      })
+      .from(visits)
+      .where(
+        and(
+          eq(visits.userId, userId),
+          gte(visits.visitDate, prevMonthStart),
+          lte(visits.visitDate, prevMonthEnd)
+        )
+      )
       .groupBy(visits.tutorName)
 
     // Get YTD visits grouped by tutor
@@ -45,11 +66,19 @@ export async function GET(request: NextRequest) {
       .groupBy(visits.tutorName)
 
     // Format results
-    const monthlyVisits: Record<string, { count: number; total: number }> = {}
+    const currentMonthVisits: Record<string, { count: number; total: number }> = {}
+    const previousMonthVisits: Record<string, { count: number; total: number }> = {}
     const ytdVisits: Record<string, { count: number; total: number }> = {}
 
-    monthlyResults.forEach((row) => {
-      monthlyVisits[row.tutorName] = {
+    currentMonthResults.forEach((row) => {
+      currentMonthVisits[row.tutorName] = {
+        count: row.count,
+        total: parseFloat(row.total.toString()),
+      }
+    })
+
+    previousMonthResults.forEach((row) => {
+      previousMonthVisits[row.tutorName] = {
         count: row.count,
         total: parseFloat(row.total.toString()),
       }
@@ -63,9 +92,10 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json({
-      monthly: monthlyVisits,
+      currentMonth: currentMonthVisits,
+      previousMonth: previousMonthVisits,
       ytd: ytdVisits,
-      currentMonth,
+      currentMonthNumber: currentMonth,
       currentYear,
     })
   } catch (error) {
