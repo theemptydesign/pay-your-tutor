@@ -420,6 +420,7 @@ export default function VisitTracker() {
                   <th className="px-4 py-3 text-right text-sm font-medium text-on-surface-variant">YTD Total</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-on-surface-variant">Previous Month</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-on-surface-variant">Current Month</th>
+                  <th className="px-4 py-3 text-center text-sm font-medium text-on-surface-variant">Paid</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant">
@@ -464,21 +465,28 @@ export default function VisitTracker() {
                         </div>
                       </td>
                       <td className="px-4 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <span className="text-sm font-medium text-foreground">
-                            ${current.total.toFixed(2)}
-                          </span>
-                          {hasCurrentAmount && (
-                            <label className="flex items-center cursor-pointer group" title={isCurrentMonthPaid ? `Paid on ${new Date(currentMonthPaymentDate).toLocaleDateString()}` : "Mark as paid"}>
+                        <span className="text-sm font-medium text-foreground">
+                          ${current.total.toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {hasCurrentAmount && (
+                          <div className="flex flex-col items-center gap-1">
+                            <label className="flex items-center cursor-pointer group">
                               <input
                                 type="checkbox"
                                 checked={isCurrentMonthPaid}
                                 onChange={() => toggleCurrentMonthPaid(tutor.name, current.total)}
-                                className="w-4 h-4 rounded border-2 border-primary text-primary focus:ring-2 focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                                className="w-4 h-4 rounded border-2 border-purple-600 text-purple-900 focus:ring-2 focus:ring-purple-600 focus:ring-offset-0 cursor-pointer accent-purple-900"
                               />
                             </label>
-                          )}
-                        </div>
+                            {isCurrentMonthPaid && (
+                              <span className="text-xs text-purple-700 dark:text-purple-400">
+                                {new Date(currentMonthPaymentDate).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )
@@ -496,6 +504,7 @@ export default function VisitTracker() {
                   <td className="px-4 py-4 text-right text-lg font-semibold text-foreground">
                     ${currentMonthTotal.toFixed(2)}
                   </td>
+                  <td className="px-4 py-4"></td>
                 </tr>
               </tfoot>
             </table>
