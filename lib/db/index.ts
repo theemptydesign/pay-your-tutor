@@ -2,17 +2,22 @@ import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 import * as schema from "./schema"
 
-const connectionString = process.env.DATABASE_URL || "postgresql://localhost:5432/tutor_tracker"
+// Lazy initialization to prevent connection during build
+let _db: ReturnType<typeof drizzle> | null = null
 
-// Create client lazily to avoid connection during build
-let client: ReturnType<typeof postgres> | null = null
-
-function getClient() {
-  if (!client) {
+function getDb() {
+  if (!_db) {
+    const connectionString = process.env.DATABASE_URL || "postgresql://localhost:5432/tutor_tracker"
     // Disable prefetch as it's not supported for "Transaction" pool mode
-    client = postgres(connectionString, { prepare: false })
+    const client = postgres(connectionString, { prepare: false })
+    _db = drizzle(client, { schema })
   }
-  return client
+  return _db
 }
 
-export const db = drizzle(getClient(), { schema })
+// Export a proxy that calls getDb() when accessed
+export const db = new Proxy({} as ReturnType<typeof drizzle>, {
+  get(target, prop) {
+    return (getDb() as any)[prop]
+  }
+})
