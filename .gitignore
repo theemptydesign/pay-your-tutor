@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ - REMOVED: We need this directory for Next.js app code
 lib64/
 parts/
 sdist/
