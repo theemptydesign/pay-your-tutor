@@ -17,6 +17,8 @@ COPY . .
 
 # Set environment variable for build
 ENV NEXT_TELEMETRY_DISABLED=1
+# Provide a dummy DATABASE_URL for build time (actual URL will be provided at runtime)
+ENV DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy"
 
 # Build the application
 RUN npm run build
